@@ -1,0 +1,19 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
+schema_version: turbophysai/runtime-config/v1
+kind: RuntimeConfig
+
+# Machine-independent defaults for the OpenVLA training recipe.
+# Network interface, master address/port, CPU placement and host-specific
+# library paths stay deployer overrides because they differ between nodes
+# and schedulers.
+environment:
+  set:
+    DISABLE_ADDMM_CUDA_LT: "1"
+    MIOPEN_PRECISION_FP32_FP32_FP32_TF32_FP32: "1"
+    PYTORCH_HIP_ALLOC_CONF: "roundup_power2_divisions:16"
+  unset: []
+
+process:
+  numa: true

@@ -1,0 +1,58 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
+schema_version: turbophysai/optimization-config/v1
+kind: OptimizationConfig
+
+metadata:
+  id: model.openvla.base.hcu
+  version: "0.8.0"
+  description: HCU optimization recipe for official OpenVLA
+
+model:
+  name: openvla
+
+optimization_modules:
+  - turbo_physai.optimizations.models.openvla.catalog
+
+# NOTE: OpenVLA (prismatic) has no mmcv/mmdet3d dependency, so we do NOT extend
+# `common.hcu.base` (that common collection pulls in mmcv/mmdet3d Groups whose
+# targets cannot be resolved in an OpenVLA environment).  This config only carries
+# model-specific Groups.
+extends: []
+
+compatibility: {}
+
+# Add validated model-specific Group IDs here.
+optimization_groups:
+  - id: openvla.bf16_support
+    enabled: true
+  # 放在 compile 组之前：该组 patch 的是 FSDP1 类本身，compile 组的 run_setup 在运行时动态取这个类来构造 FSDP，两者因此可以叠加。
+  - id: openvla.fsdp.prefetch
+    enabled: true
+    options:
+      limit_all_gathers: false
+      forward_prefetch: true
+      backward_prefetch: pre
+  - id: openvla.compile.fsdp1
+    enabled: true
+    options:
+      compile: true
+      mode: default
+  - id: openvla.adamw.fused
+    enabled: true
+  - id: openvla.llm.skip_fa2_unpad
+    enabled: true
+  - id: openvla.llm.bf16_ce
+    enabled: false
+  - id: openvla.data.text_len_bucket
+    enabled: true
+    options:
+      bucket: 8
+  - id: openvla.dataloader.spawn
+    enabled: true
+    options:
+      num_workers: 2
+      pin_memory: true
+  - id: openvla.gc.freeze
+    enabled: true
