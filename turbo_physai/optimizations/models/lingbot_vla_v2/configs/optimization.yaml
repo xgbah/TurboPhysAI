@@ -1,0 +1,101 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
+schema_version: turbophysai/optimization-config/v1
+kind: OptimizationConfig
+metadata:
+  id: model.lingbot_vla_v2.base.hcu
+  version: 0.1.0
+  description: HCU optimization recipe for LingBot-VLA v2
+model:
+  name: lingbot_vla_v2
+compatibility:
+  commits:
+  - be969b8fd117fb70550c5d4bf4bc328211b5b1b6
+optimization_groups:
+- id: lingbot-vla-v2.profiling
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      lingbotvla.utils.helper.create_profiler:
+      - source-v1:47beff5b93bd2333aeb5524478a6d92a3c759154856e3de05cfc12b6a7e559fd
+    ast_hashes:
+      lingbotvla.utils.helper.create_profiler:
+      - ast-v1:4fb7260f297823da8d393436910dc29c0cfd46f4efd51bc75ca5e5b800d3a2bc
+- id: lingbot-vla-v2.flex-kernel-options
+  enabled: true
+  options:
+    kernel_options:
+      BLOCK_M: 32
+      BLOCK_N: 32
+      num_stages: 1
+      num_warps: 4
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.lingbot_vla.flex_attention.flex_attention:
+      - source-v1:589b3f88ca21cb4fe045f753eaaf975eb7f9de63da6a389d912938dca5f05a35
+    ast_hashes:
+      lingbotvla.models.vla.lingbot_vla.flex_attention.flex_attention:
+      - ast-v1:98244ea77c92c874854a0a83f7035396d0d0c043d196afc948c7cc7a67daa277
+- id: lingbot-vla-v2.conv3d-to-linear
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed.forward:
+      - source-v1:8a9155b5aa2fad48521834fb177e946d880c117270e73ba408869bc32f577968
+    ast_hashes:
+      transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed.forward:
+      - ast-v1:bdcd00dfa6847276fd229f3a44b1b36343065dd9084493f994a4ca8da101dd82
+- id: lingbot-vla-v2.qwen3vl-cache-grid-thw
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.Qwen3VLVisionModel.fast_pos_embed_interpolate:
+      - source-v1:61d301b0c88ebb06a6fd023eea0091919b5ef0e716d95739b5ec71c18955d96c
+    ast_hashes:
+      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.Qwen3VLVisionModel.fast_pos_embed_interpolate:
+      - ast-v1:7700dce19277a366bf881149fe4ad551992572f816451d6aa91e645602f9df30
+- id: lingbot-vla-v2.qwen3vl-compile
+  enabled: true
+  options:
+    compile:
+      dynamic: true
+    compile_blocks: true
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.FlowMatchingV2.__init__:
+      - source-v1:2196adec32b9464fd390e082bcb10c1b328ddb482597d2693b73c16ed8a7edcd
+      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.forward_without_grid_thw:
+      - source-v1:8ce64fd54360d49ddb11d2a91559d86b365f88058fe010b71816ac1556198754
+    ast_hashes:
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.FlowMatchingV2.__init__:
+      - ast-v1:99d51689208891ce171389beb02425e855dcf174544ed86c3712221d4aeb768d
+      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.forward_without_grid_thw:
+      - ast-v1:3dd4570ccd7575687bcb685ce0a7bd31aa27824eb542bdd8c55469ef0143410b
+- id: lingbot-vla-v2.compile-teacher
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.vision_models.module_utils.v2.forward:
+      - source-v1:0f3a0740cc770f661f561a5a8e75514f7c8bdccbbbce7740698a05d6a65e3009
+      lingbotvla.models.vla.vision_models.module_utils.v2_morgbd.forward_feat:
+      - source-v1:8512f1004e49e1ac8c6a6a68a05828ea5ee8a0fb3b552aa49a2e3e727e5edddf
+      lingbotvla.models.vla.vision_models.dino_video.lumos_dinov3.models.inference.CausalEvalAdapter.get_intermediate_layers:
+      - source-v1:7a9ed05ec72ea55a1451cd88587f6e6a4ed79be6a8f45162c6a3b9e535cfcd9b
+    ast_hashes:
+      lingbotvla.models.vla.vision_models.module_utils.v2.forward:
+      - ast-v1:01a5991a4e653fb89aab7121770edfc4bfae99ad4626176adf65cc0aee999e16
+      lingbotvla.models.vla.vision_models.module_utils.v2_morgbd.forward_feat:
+      - ast-v1:3be77e6de0e93d6ea325970f4ccb18d6be1d9af13ad184f3925fb6997c6a436e
+      lingbotvla.models.vla.vision_models.dino_video.lumos_dinov3.models.inference.CausalEvalAdapter.get_intermediate_layers:
+      - ast-v1:9a9df057ea1636d363ee433e3e2fb3994062ff440f45124b2dd11db9fa61591c
+- id: lingbot-vla-v2.muon
+  enabled: false
+  options: {}
+  trust: {}
+optimization_modules:
+- turbo_physai.optimizations.models.lingbot_vla_v2.catalog

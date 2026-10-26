@@ -1,0 +1,68 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
+schema_version: turbophysai/optimization-config/v1
+kind: OptimizationConfig
+
+metadata:
+  id: model.lingbot_vla_v2.base.hcu
+  version: "0.1.0"
+  description: HCU optimization recipe for LingBot-VLA v2
+
+model:
+  name: lingbot_vla_v2
+
+optimization_modules:
+  - turbo_physai.optimizations.models.lingbot_vla_v2.catalog
+
+# NOTE: LingBot-VLA has no mmcv/mmdet3d dependency, so we do NOT extend
+# `common.hcu.base` (that common collection pulls in mmcv/mmdet3d Groups whose
+# targets cannot be resolved in a LingBot-VLA environment).  This config only
+# carries model-specific Groups.
+extends: []
+
+compatibility: {}
+
+# Add validated model-specific Group IDs here.
+optimization_groups:
+
+  # 补上没定义的方法，防止抓trace报错
+  - id: lingbot-vla-v2.profiling
+    enabled: true
+  
+  # muno 同地址矩阵乘报错补丁
+  - id: lingbot-vla-v2.muon
+    enabled: false
+
+  # flex attn编译选项设置，防止编译报错
+  - id: lingbot-vla-v2.flex-kernel-options
+    enabled: true
+    options:
+      kernel_options:
+        BLOCK_M: 32
+        BLOCK_N: 32
+        num_warps: 4
+        num_stages: 1
+
+  # conv3d->linear
+  - id: lingbot-vla-v2.conv3d-to-linear
+    enabled: true
+
+  # 因为输入图像尺寸不变，所以可以缓存 pos_embed 的索引/权重表
+  - id: lingbot-vla-v2.qwen3vl-cache-grid-thw
+    enabled: true
+
+  # 逐层 compile vision block
+  - id: lingbot-vla-v2.qwen3vl-compile
+    enabled: true
+    options:
+      compile_blocks: true
+      compile:
+        dynamic: true
+
+  # 编译 深度预测和未来帧预测 代理任务的两个teacher网络
+  - id: lingbot-vla-v2.compile-teacher
+    enabled: true
+
+
+

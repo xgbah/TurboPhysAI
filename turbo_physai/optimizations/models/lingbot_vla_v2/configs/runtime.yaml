@@ -1,0 +1,13 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
+schema_version: turbophysai/runtime-config/v1
+kind: RuntimeConfig
+
+environment:
+  # set: 
+    # ROCBLAS_TENSILE_LIBPATH: "/home/lingbot-vla-v2/rocblas-tuning-20261019/library_gpu5"
+  unset: []
+
+process:
+  numa: true

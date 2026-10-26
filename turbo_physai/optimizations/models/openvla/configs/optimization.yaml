@@ -87,26 +87,6 @@ optimization_groups:
     ast_hashes:
       prismatic.util.data_utils.PaddedCollatorForActionPrediction.__call__:
       - ast-v1:99b0919ed0ec091862483cc1eced83939c13c3c652021347c4d87a44eaca04e4
-- id: openvla.dataloader.spawn
-  enabled: true
-  options:
-    num_workers: 2
-    pin_memory: true
-  trust:
-    source_hashes:
-      prismatic.vla.datasets.datasets.RLDSDataset:
-      - source-v1:db93d5cbc56d9a4207629cc6a84fddb0d991f23814e5eb3f384e8f5cf1982516
-      prismatic.vla.datasets.datasets.EpisodicRLDSDataset:
-      - source-v1:26bcea9656a8547e1e810d3770de4d8db92fc2af6bdd8b7e479e5a79d44d9d75
-      torch.utils.data.DataLoader:
-      - source-v1:1e5a78c41290f043d2de3e217ab311c76ad1d294a136941c54ceb66f63514d93
-    ast_hashes:
-      prismatic.vla.datasets.datasets.RLDSDataset:
-      - ast-v1:87e080d33fba03e3f0b24095802c0a2853dc55a174a51d325f8d8b971bf9ade8
-      prismatic.vla.datasets.datasets.EpisodicRLDSDataset:
-      - ast-v1:1435c4f61646f64c321cead267b89734853af5eb186d32a8cd81624cb7a209ea
-      torch.utils.data.DataLoader:
-      - ast-v1:799d09abff6846bd4001c5250b8c87760dda1eb708dd88e18790b0232b810cc3
 - id: openvla.gc.freeze
   enabled: true
   options: {}
@@ -118,19 +98,57 @@ optimization_groups:
       prismatic.training.strategies.base_strategy.TrainingStrategy.run_vla_training:
       - ast-v1:a002574e805c6e58c9e10fd71f8aa8d0c539f45354d52e1d4dc58b7d0a13af25
 - id: openvla.reproducibility.data_order
-  enabled: false
+  enabled: true
   options:
     explicit_seeds: true
     hold_shuffle_permutation: true
-  trust: {}
+  trust:
+    source_hashes:
+      prismatic.util.torch_utils.set_global_seed:
+      - source-v1:f087338f64e01ddeba3c22975ac8e4c67f37ac5d9098d7057f09e93d5a5cb4a6
+      prismatic.util.torch_utils.worker_init_function:
+      - source-v1:249417ece7393ced362572c138210df49083fd81c0aa78ec36a8f79f3c8a81cc
+      prismatic.vla.datasets.rlds.dataset.make_dataset_from_rlds:
+      - source-v1:8688bf8ad142c24e23206d319123ca0c185060c05d4c320738d5305dd27bc579
+      prismatic.vla.datasets.rlds.dataset.make_interleaved_dataset:
+      - source-v1:34c99e0dda1854e3e5f15e2ac2e6dc1f1a42d14af98c419faf0e78f4b66ac5a9
+      dlimp.DLataset.sample_from_datasets:
+      - source-v1:5640e28a9fe1ddaf1bfa50151d634816fd5add8c3837df7a6306af6589202ef0
+      dlimp.DLataset.shuffle:
+      - source-v1:01af4970a57da2c9c46f782ab76df335be4392fe2d3f89dfb67d4d4aad220c25
+    ast_hashes:
+      prismatic.util.torch_utils.set_global_seed:
+      - ast-v1:20ed45117aafd5d940700bde0a04abf60c9af49d4840e7d097276449c9075c0f
+      prismatic.util.torch_utils.worker_init_function:
+      - ast-v1:9db034adc77b4a010d272aca871675c12ed47886798198662fdfc9cc7635a39a
+      prismatic.vla.datasets.rlds.dataset.make_dataset_from_rlds:
+      - ast-v1:5024e2a0bae3828418420c1407bcc0be2de1b9abe99143dc7453599b0e795f88
+      prismatic.vla.datasets.rlds.dataset.make_interleaved_dataset:
+      - ast-v1:cbcb3e07b991346ef8824c78640d4d86274d73d14aa152cecf991ccd2f2b14fc
+      dlimp.DLataset.sample_from_datasets:
+      - ast-v1:a11f46b9c0812e0f2fd53575352d31a44cfa09f51ba45ef4d5213b30ed7a6726
+      dlimp.DLataset.shuffle:
+      - ast-v1:c9b1e77db0ba1d23ffdcec4d65547a8f83ac2703b3c7d7bd6997a717e359bd2a
 - id: openvla.reproducibility.determinism
-  enabled: false
+  enabled: true
   options:
     allow_tf32: false
     benchmark: false
     cudnn_deterministic: true
     deterministic_algorithms: true
     strict: false
+  trust:
+    source_hashes:
+      prismatic.models.vlms.prismatic.PrismaticVLM.__init__:
+      - source-v1:39de82bf4a50d6832e5bebe344060b61745b2c732cb6504bbb5cd7c7a11c1ddd
+    ast_hashes:
+      prismatic.models.vlms.prismatic.PrismaticVLM.__init__:
+      - ast-v1:8d290e94cbbd62a4526448b2fec063c86b0da4cdb589309d8e64436c11275fc9
+- id: openvla.dataloader.spawn
+  enabled: false
+  options:
+    num_workers: 2
+    pin_memory: true
   trust: {}
 optimization_modules:
 - turbo_physai.optimizations.models.openvla.catalog
