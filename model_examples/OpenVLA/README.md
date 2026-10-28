@@ -27,24 +27,25 @@ harbor.sourcefind.cn:5443/hcu/admin/base/pytorch:2.7.1-ubuntu22.04-dtk26.04-py3.
 下文命令均在容器内执行。
 
 
-### 3.2 安装OpenVLA训练依赖
+### 3.2 安装 OpenVLA 训练依赖
+
+镜像已提供 DTK 版 torch 等基础包，OpenVLA 训练还需要安装额外依赖，清单见 [requirements.txt](requirements.txt)。
+安装时带 `--force-reinstall --no-deps`，避免 pip 重新解析依赖、把镜像中的 DTK 版 torch 或刚安装的 DCU 版 tensorflow 换成 PyPI 版本。
+
 ```bash
-# 安装tensorflow
+# 安装 DCU 版 tensorflow
 pip install tensorflow==2.18.0+das.opt1.dtk2604 -i https://pypi.sourcefind.cn/release/dtk/
 
-# 安装其他依赖库
-pip install --force-reinstall --no-deps "tensorflow-datasets==4.9.3" "tensorflow-metadata==1.16.1" "wandb==0.18.7" "numpy==1.26.4" "tensorflow-graphics==2021.12.3" "transformers==4.40.1" "tokenizers<0.20" "jsonlines" "docker-pycreds" "draccus" "mergedeep" "typing_inspect" "huggingface_hub>=0.23.2,<0.26" "mypy_extensions" "etils" "importlib_resources" "dm-tree" "promise" "array-record" "toml" "OpenEXR>=1.3.2" "tensorflow-addons>=0.10.0" "trimesh>=2.37.22" "timm<1.0"
+# 安装其余依赖（--no-deps 避免这些库把 tensorflow 换成其他版本）
+pip install --force-reinstall --no-deps -r /path/to/TurboPhysAI/model_examples/OpenVLA/requirements.txt
 
-# 安装dlimp
+# 安装 dlimp
 pip install "dlimp @ git+https://github.com/moojink/dlimp_openvla" --no-deps
 ```
 
-安装TurboPhysAI框架
-```
+安装 TurboPhysAI 框架见[安装说明](../../docs/zh/get_started/installation.md)。
 
-```
-
-## 3. 准备模型源码
+## 4. 准备模型源码
 
 ```bash
 mkdir -p /workspace/model
@@ -55,7 +56,7 @@ git checkout --detach c8f03f48af692657d3060c19588038c7220e9af9
 ```
 
 
-## 4. 准备 BridgeData V2 数据
+## 5. 准备 BridgeData V2 数据
 
 OpenVLA 训练使用 RLDS 格式的数据。本文使用 BridgeData V2，从官方地址下载（约 124 GB）：
 
@@ -82,7 +83,7 @@ mv bridge_dataset bridge_orig
 
 启动训练时通过 `--data_root_dir` 传入`/workspace/dataset/BridgeDataV2`。
 
-## 5. 准备基座 VLM 权重
+## 6. 准备基座 VLM 权重
 
 `--vla.type prism-dinosiglip-224px+mx-bridge` 的预训练权重为 `prism-dinosiglip-224px+7b`，训练脚本在未指定 `--pretrained_checkpoint` 时从 Hugging Face Hub 拉取并加载该 Prismatic VLM。按官方说明在仓库根目录准备 Hugging Face token：
 
@@ -99,35 +100,43 @@ openvla也可以改为加载本地检查点，此时需通过 `--pretrained_chec
 --pretrained_checkpoint <openvla-7b-prismatic 检查点文件或 Prismatic run 目录>
 ```
 
-TurboPhysAI 已安装在镜像的 Python 环境中。后续命令使用 `--model openvla` 自动选择随组件安装的 OptimizationConfig 和 RuntimeConfig，不依赖固定安装目录。
-
-## 6. 通过 turbo-physai run 启动训练
+## 7. 通过 turbo-physai run 启动训练
 
 `turbo-physai run` 自动加载随包交付的 [OptimizationConfig](../../docs/zh/user_guide/optimization_config.md) 和 [RuntimeConfig](../../docs/zh/user_guide/runtime_config.md)，无需修改模型源码即可应用 OpenVLA 优化。OpenVLA 优化覆盖该训练栈的算子、通信、数据与可复现性环节。
 
 OpenVLA RuntimeConfig 包含训练所需的运行环境和 NUMA 配置。
 
-### 6.1 单机八卡训练
+### 7.1 快速验证（单机八卡）
 
 ```bash
+# 这里把官方启动命令`--vla.train_strategy fsdp-full-shard`改为fsdp-shard-grad-op策略，减少通信开销
 turbo-physai run \
   --model openvla \
   --log-report \
   torchrun --standalone --nnodes 1 --nproc-per-node 8 vla-scripts/train.py \
-    --vla.type prism-dinosiglip-224px+mx-bridge \
     --vla.train_strategy fsdp-shard-grad-op \
-    --vla.expected_world_size 8 \
-    --vla.global_batch_size 256 \
-    --vla.per_device_batch_size 32 \
-    --vla.enable_gradient_checkpointing true \
-    --vla.reduce_in_full_precision true \
+    --data_root_dir /workspace/dataset/BridgeDataV2 \
     --vla.max_steps 1000 \
+    --run_root_dir <训练输出目录> \
+    --run_id_note openvla_8card_quick_start \
+    --trackers '[jsonl]'
+```
+
+### 7.2 单机八卡训练
+
+```bash
+# 这里把官方启动命令`--vla.train_strategy fsdp-full-shard`改为fsdp-shard-grad-op策略，减少通信开销
+turbo-physai run \
+  --model openvla \
+  --log-report \
+  torchrun --standalone --nnodes 1 --nproc-per-node 8 vla-scripts/train.py \
+    --vla.train_strategy fsdp-shard-grad-op \
     --data_root_dir /workspace/dataset/BridgeDataV2 \
     --run_root_dir <训练输出目录> \
     --run_id_note openvla_8card \
     --trackers '[jsonl]'
 ```
 
-`--nproc-per-node` 指定当前节点的训练进程数。`--model openvla` 自动加载内置 OptimizationConfig 和 RuntimeConfig。
+`--model openvla` 自动加载内置 OptimizationConfig 和 RuntimeConfig。
 
 优化应用状态的确认方法见[快速开始：通过日志确认优化状态](../../docs/zh/get_started/quick_start.md#3-通过日志确认优化状态)。

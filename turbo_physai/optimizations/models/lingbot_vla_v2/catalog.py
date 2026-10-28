@@ -102,9 +102,9 @@ QWEN3VL_CACHE_GRID_THW = group(
 # Both entries are needed for the compiled path to stay compiled: the dead
 # ``self.steps`` counter must not re-specialise every step, and the vision
 # blocks are compiled inside the checkpoint wrapper.
-# ``wrap`` (not ``replace``) so the Group's options reach the implementation:
-# ``compile_blocks`` switches on the per-layer ``torch.compile`` path and
-# ``compile`` is forwarded verbatim to ``torch.compile``.
+# ``wrap`` (not ``replace``) so the checkpoint/compile wrapper can be installed
+# around the existing callable; the ``torch.compile`` options are fixed in
+# ``qwen3vl_compile_vision.COMPILE_OPTIONS``.
 QWEN3VL_COMPILE = group(
     "lingbot-vla-v2.qwen3vl-compile",
     wrap(
@@ -125,6 +125,62 @@ QWEN3VL_COMPILE = group(
         replacement=(
             "turbo_physai.optimizations.models.lingbot_vla_v2.qwen3vl_compile_vision."
             "compile_vision_blocks"
+        ),
+    ),
+)
+
+# --- Qwen3-VL: per-layer torch.compile for the text decoder -------------------
+# Same mechanism as ``QWEN3VL_COMPILE`` above, applied to the text tower's
+# per-layer call sites: the text ``forward`` is compiled *inside* the
+# ``GradientCheckpointingLayer`` checkpoint wrapper, so the recompute pass runs
+# the compiled graph too.  The action expert shares the same loop and is
+# deliberately left eager.
+#
+# The install happens in ``__init__``, not in ``forward``: Dynamo traces
+# ``QwenvlWithExpertV2Model.forward`` (it inlines the whole 24-layer loop), and
+# inside a trace ``torch.compile`` returns the callable unchanged.  Installing
+# from there would store the eager function as "compiled" and pin it forever.
+# ``forward`` keeps a fallback wrapper for the first eager execution.
+QWEN3VL_COMPILE_TEXT = group(
+    "lingbot-vla-v2.qwen3vl-compile-text",
+    wrap(
+        target=(
+            "lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2."
+            "QwenvlWithExpertV2Model.__init__"
+        ),
+        replacement=(
+            "turbo_physai.optimizations.models.lingbot_vla_v2.qwen3vl_compile_text."
+            "install_on_init"
+        ),
+    ),
+    wrap(
+        target=(
+            "lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2."
+            "QwenvlWithExpertV2Model.forward"
+        ),
+        replacement=(
+            "turbo_physai.optimizations.models.lingbot_vla_v2.qwen3vl_compile_text."
+            "compile_text_layers"
+        ),
+    ),
+)
+
+# --- Qwen2 action expert: per-layer torch.compile for the MoE decoder ---------
+# Same mechanism again, one tower further: ``Qwen2DecoderLayer.forward`` is
+# compiled inside its checkpoint wrapper so the recompute pass is compiled too.
+# The install point is ``Qwen2ForCausalLM.__init__`` -- distinct from the text
+# tower's target -- so the two towers stay independently switchable, and it runs
+# outside any trace (``torch.compile`` is a no-op while tracing).
+QWEN2_COMPILE_EXPERT = group(
+    "lingbot-vla-v2.qwen2-compile-expert",
+    wrap(
+        target=(
+            "lingbotvla.models.vla.lingbot_vla.qwen2_action_expert."
+            "Qwen2ForCausalLM.__init__"
+        ),
+        replacement=(
+            "turbo_physai.optimizations.models.lingbot_vla_v2.qwen2_compile_expert."
+            "install_on_init"
         ),
     ),
 )

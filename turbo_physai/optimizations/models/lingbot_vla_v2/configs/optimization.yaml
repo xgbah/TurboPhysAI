@@ -25,12 +25,7 @@ optimization_groups:
       - ast-v1:4fb7260f297823da8d393436910dc29c0cfd46f4efd51bc75ca5e5b800d3a2bc
 - id: lingbot-vla-v2.flex-kernel-options
   enabled: true
-  options:
-    kernel_options:
-      BLOCK_M: 32
-      BLOCK_N: 32
-      num_stages: 1
-      num_warps: 4
+  options: {}
   trust:
     source_hashes:
       lingbotvla.models.vla.lingbot_vla.flex_attention.flex_attention:
@@ -58,23 +53,6 @@ optimization_groups:
     ast_hashes:
       lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.Qwen3VLVisionModel.fast_pos_embed_interpolate:
       - ast-v1:7700dce19277a366bf881149fe4ad551992572f816451d6aa91e645602f9df30
-- id: lingbot-vla-v2.qwen3vl-compile
-  enabled: true
-  options:
-    compile:
-      dynamic: true
-    compile_blocks: true
-  trust:
-    source_hashes:
-      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.FlowMatchingV2.__init__:
-      - source-v1:2196adec32b9464fd390e082bcb10c1b328ddb482597d2693b73c16ed8a7edcd
-      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.forward_without_grid_thw:
-      - source-v1:8ce64fd54360d49ddb11d2a91559d86b365f88058fe010b71816ac1556198754
-    ast_hashes:
-      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.FlowMatchingV2.__init__:
-      - ast-v1:99d51689208891ce171389beb02425e855dcf174544ed86c3712221d4aeb768d
-      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.forward_without_grid_thw:
-      - ast-v1:3dd4570ccd7575687bcb685ce0a7bd31aa27824eb542bdd8c55469ef0143410b
 - id: lingbot-vla-v2.compile-teacher
   enabled: true
   options: {}
@@ -93,6 +71,44 @@ optimization_groups:
       - ast-v1:3be77e6de0e93d6ea325970f4ccb18d6be1d9af13ad184f3925fb6997c6a436e
       lingbotvla.models.vla.vision_models.dino_video.lumos_dinov3.models.inference.CausalEvalAdapter.get_intermediate_layers:
       - ast-v1:9a9df057ea1636d363ee433e3e2fb3994062ff440f45124b2dd11db9fa61591c
+- id: lingbot-vla-v2.qwen3vl-compile
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.FlowMatchingV2.__init__:
+      - source-v1:2196adec32b9464fd390e082bcb10c1b328ddb482597d2693b73c16ed8a7edcd
+      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.forward_without_grid_thw:
+      - source-v1:8ce64fd54360d49ddb11d2a91559d86b365f88058fe010b71816ac1556198754
+    ast_hashes:
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.FlowMatchingV2.__init__:
+      - ast-v1:99d51689208891ce171389beb02425e855dcf174544ed86c3712221d4aeb768d
+      lingbotvla.models.vla.lingbot_vla.qwen3vl_in_vla.forward_without_grid_thw:
+      - ast-v1:3dd4570ccd7575687bcb685ce0a7bd31aa27824eb542bdd8c55469ef0143410b
+- id: lingbot-vla-v2.qwen3vl-compile-text
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.QwenvlWithExpertV2Model.__init__:
+      - source-v1:8b35448c448345148f501bfdc18ad9fe7e648f360f70082a1525db2a0cc0aa81
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.QwenvlWithExpertV2Model.forward:
+      - source-v1:edfe347cb584b7f5317bf46a38cc51fd731d697f60c87be8aec9f0e4d1cc7440
+    ast_hashes:
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.QwenvlWithExpertV2Model.__init__:
+      - ast-v1:3a04af75260b5445e419dda73c83bc7d61ced2be549ad71130cbebe08a2fba5a
+      lingbotvla.models.vla.lingbot_vla.modeling_lingbot_vla_v2.QwenvlWithExpertV2Model.forward:
+      - ast-v1:8abbd15dc92bd6f9b732e11793f4c202068f0c987d9acaaa81fd475bb353e68a
+- id: lingbot-vla-v2.qwen2-compile-expert
+  enabled: true
+  options: {}
+  trust:
+    source_hashes:
+      lingbotvla.models.vla.lingbot_vla.qwen2_action_expert.Qwen2ForCausalLM.__init__:
+      - source-v1:265e8a69ad6e24cf94af49a9de16236ec4d449527a52c71d66565a6ba2f4278e
+    ast_hashes:
+      lingbotvla.models.vla.lingbot_vla.qwen2_action_expert.Qwen2ForCausalLM.__init__:
+      - ast-v1:2a4ddd6c06d56bae60ca6058d3a758e84863b4c20a152a16c37ac65b1d10832c
 - id: lingbot-vla-v2.muon
   enabled: false
   options: {}

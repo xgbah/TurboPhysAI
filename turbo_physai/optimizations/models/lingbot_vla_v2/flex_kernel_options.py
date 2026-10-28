@@ -41,9 +41,9 @@ are.  Only this module's own reference is wrapped, so callers that import
 
 Configuration
 -------------
-``DEFAULT_KERNEL_OPTIONS`` is used when the Group carries no ``kernel_options``
-option.  Passing an empty mapping (``kernel_options: {}``) drops the argument
-instead, which leaves the tile choice to the torch build's own heuristic.
+:data:`DEFAULT_KERNEL_OPTIONS` is the table substituted into every call; keys
+passed by the caller win.  The Group's option mapping is ignored -- enabling the
+Group is the only switch.
 """
 
 import functools
@@ -58,25 +58,18 @@ DEFAULT_KERNEL_OPTIONS = {
 }
 
 
-def flex_attention_kernel_options(original, options=None):
+def flex_attention_kernel_options(original, _options=None):
     """Build the wrapper that substitutes the ``kernel_options`` of a call.
 
-    ``options`` is the option mapping of the Group; ``kernel_options`` inside it
-    is the table to apply (empty to keep the backend defaults).
+    The Group's option mapping is ignored; :data:`DEFAULT_KERNEL_OPTIONS` is
+    always applied.
     """
-    if options is not None and "kernel_options" in options:
-        table = dict(options["kernel_options"] or {})
-    else:
-        table = dict(DEFAULT_KERNEL_OPTIONS)
+    table = dict(DEFAULT_KERNEL_OPTIONS)
 
     @functools.wraps(original)
     def wrapped(*args, **kwargs):
-        if table:
-            # The model passes kernel_options as a keyword argument.
-            caller = kwargs.get("kernel_options") or {}
-            kwargs["kernel_options"] = {**caller, **table}
-        else:
-            kwargs.pop("kernel_options", None)
+        caller = kwargs.get("kernel_options") or {}
+        kwargs["kernel_options"] = {**caller, **table}
         return original(*args, **kwargs)
 
     return wrapped

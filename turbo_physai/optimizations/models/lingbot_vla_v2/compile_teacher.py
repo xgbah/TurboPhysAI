@@ -46,9 +46,8 @@ attention kernel keeps its own tuning and everything around it is still fused.
 
 Configuration
 -------------
-``options["compile"]`` is passed verbatim to ``torch.compile``; for a fixed
-input shape this is e.g. ``{"mode": "max-autotune", "dynamic": False}``.  An
-empty mapping keeps the ``torch.compile`` defaults.
+Enabling the Group is the only switch: :func:`compiled_forward` always uses the
+``torch.compile`` defaults, so the Group's option mapping is ignored.
 """
 
 from __future__ import annotations
@@ -58,17 +57,15 @@ import functools
 import torch
 
 
-def compiled_forward(original, options=None):
+def compiled_forward(original, _options=None):
     """Return a wrapper that compiles ``original`` on its first call."""
-
-    compile_options = dict((options or {}).get("compile") or {})
     compiled = None
 
     @functools.wraps(original)
     def wrapped(*args, **kwargs):
         nonlocal compiled
         if compiled is None:
-            compiled = torch.compile(original, **compile_options)
+            compiled = torch.compile(original)
         return compiled(*args, **kwargs)
 
     return wrapped

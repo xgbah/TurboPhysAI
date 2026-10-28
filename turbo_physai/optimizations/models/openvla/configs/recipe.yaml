@@ -25,16 +25,9 @@ optimization_groups:
 
   - id: openvla.fsdp.prefetch
     enabled: true
-    options:
-      limit_all_gathers: false
-      forward_prefetch: true
-      backward_prefetch: pre
 
   - id: openvla.compile.fsdp1
     enabled: true
-    options:
-      compile: true
-      mode: default
 
   - id: openvla.adamw.fused
     enabled: true
@@ -44,29 +37,15 @@ optimization_groups:
 
   - id: openvla.data.text_len_bucket
     enabled: true
-    options:
-      bucket: 8
 
   - id: openvla.dataloader.spawn
-    enabled: false
-    options:
-      num_workers: 2
-      pin_memory: true
+    enabled: true
 
   - id: openvla.gc.freeze
     enabled: true
 
   - id: openvla.reproducibility.data_order
-    enabled: true
-    options:
-      explicit_seeds: true
-      hold_shuffle_permutation: true
+    enabled: false
 
   - id: openvla.reproducibility.determinism
-    enabled: true
-    options:
-      cudnn_deterministic: true
-      benchmark: false
-      allow_tf32: false
-      deterministic_algorithms: true
-      strict: false
+    enabled: false

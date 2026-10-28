@@ -1,6 +1,6 @@
 # OpenVLA 改动项说明
 
-随包 OptimizationConfig `model.openvla.base.hcu` 交付以下 Group。这些 Group 只替换既有函数，不修改模型结构与损失语义。
+随包 OptimizationConfig `model.openvla.base.hcu` 交付以下 Group。这些 Group 只替换既有函数或类型，不新增模型结构、不修改损失语义。
 
 关联 Issue：无。
 
@@ -32,7 +32,7 @@
 | `MIOpen TF32、强制rocBLAS、使用rocBLAS自动调优` | RuntimeConfig 设置 `DISABLE_ADDMM_CUDA_LT=1`、`MIOPEN_PRECISION_FP32_FP32_FP32_TF32_FP32=1`，并在本节点用调优库覆盖 `ROCBLAS_TENSILE_LIBPATH` | 93.57（1.40×） |
 | `CPU绑核` | RuntimeConfig 设置 `process.numa: true` | 95.59（1.43×） |
 | `openvla.fsdp.prefetch` | FSDP1 通信重叠：去掉 all_gather 限流 + FWD/BWD prefetch | 94.99（1.42×） |
-| `openvla.data.text_len_bucket` | 文本长度按 bucket 向上取整定长 padding（该行收益含 `PYTORCH_HIP_ALLOC_CONF`，已随 RuntimeConfig 交付） | 94.19（1.41×） |
+| `openvla.data.text_len_bucket` | 文本长度按 bucket 向上取整定长 padding；在 `DataLoader.__iter__` 上补齐，spawn worker 内同样生效（该行收益含 `PYTORCH_HIP_ALLOC_CONF`） | 94.19（1.41×） |
 | `openvla.gc.freeze` | 训练循环前冻结 GC 存活对象 | 94.78（1.42×） |
 
 
@@ -58,7 +58,7 @@ FSDP(layer) -> torch.compile(fsdp_layer) -> checkpoint_wrapper(compiled)
 
 activation checkpoint 落在编译单元外面，checkpoint HOP 只出现在 eager 的外层循环里。配套处理包括：`MixedPrecision(buffer_dtype=None)` 避免编译期 FSDP 惰性 buffer 转换触发 Dynamo fake-tensor 阶段的 `set_(fp32, bf16)` 报错；`save_checkpoint()` 剥掉 `OptimizedModule` 引入的 `._orig_mod.` 前缀，**检查点格式与上游一致**。视觉塔侧没有 checkpoint HOP，整塔 compile。
 
-`options.compile` 为 `false` 时本 Group 不替换任何方法，运行结果与未优化基线一致。
+本 Group 开启即启用编译，不再提供额外的开关选项。按仓库约定，`TURBO_PHYSAI_DISABLE_TORCH_COMPILE=1` 会让 `run_setup`、`save_checkpoint` 和 timm `_intermediate_layers` 三个 wrap 都返回原方法，此时运行结果与未优化基线一致；该变量只跳过 `torch.compile` 构造，不改变 Group 的选择与应用报告。
 
 #### 性能收益
 
@@ -85,6 +85,8 @@ activation checkpoint 落在编译单元外面，checkpoint HOP 只出现在 eag
 
 Group 的替换把 `torch.optim.AdamW` 的 `fused` 默认值改为 `True`，即对每个 AdamW 构造点注入 `fused=True`。非 fused 的 AdamW 需要多趟 `_foreach_*` kernel，并对每个参数单独做 weight decay 乘法；`fused=True` 把 bias-correction、weight decay 和参数更新合并为单次扫描。
 
+`prismatic/training/strategies/fsdp.py` 在模块导入时就执行了 `from torch.optim import AdamW`，构造点用的是该模块自己的绑定，只改 `torch.optim` 碰不到。因此本 Group 把 `prismatic.training.strategies.fsdp.AdamW` 也列为 alias 一起替换——否则本组要等 `openvla.compile.fsdp1` 的 `run_setup` 动态取 `torch.optim.AdamW` 时才生效，两个 Group 之间就存在未声明的依赖。
+
 #### 性能收益
 
 | 备注 | 机器 | torch版本 | 训练方式 | 节点数 | 卡数 | 每卡BS | 全局Batch | 精度 | DeepSpeed | 平均每步(s) | 单卡吞吐(samples/s) | 多卡吞吐(samples/s) | 优化/开箱BW | 优化/H20开箱 |
@@ -110,7 +112,7 @@ FA2 在 attention mask 非空时会走 `_get_unpad_data` 等 varlen 路径，其
 
 必须 `spawn` 的原因：fork 一个 TF 线程池活跃的进程会死锁。但 spawn 要求数据集对象可 pickle，而 TF graph 不能，因此 RLDS 数据集被包成可 pickle 的子类：惰性建图、序列化时丢弃 graph、在 worker 内重建，并给每个 worker 独立种子（`base_seed + worker_id`）——两个 worker 各自迭代同一份无限流，种子相同会让每个 batch 重复一遍。
 
-本 Group 只对 RLDS 数据集生效（`RLDSDataset` / `EpisodicRLDSDataset`），其它 DataLoader 保持上游行为；`num_workers: 0` 时同样保持上游行为。`pin_memory` 默认 `true`，在 `num_workers > 0` 时才设置。本组随包默认开启（`enabled: true`）。
+本 Group 只对 RLDS 数据集生效（`RLDSDataset` / `EpisodicRLDSDataset`），固定注入 `num_workers=2`、`spawn` context 与 `pin_memory=True`；其它 DataLoader 保持上游行为。这些取值写在 `spawn_dataloader.py` 的常量里，不读 Group options。本组随包默认开启（`enabled: true`）。
 
 **进行数值一致性验证时需关闭**：开启后有效 batch 流变成多条独立流的交错（每个 worker 迭代各自的数据集私有副本），可复现但不等于上游 `num_workers=0` 的单流顺序。与上游做对齐实验、以及数值精度验证时需要保持关闭。
 
@@ -150,7 +152,7 @@ FA2 在 attention mask 非空时会走 `_get_unpad_data` 等 varlen 路径，其
 
 ### 2.8 FSDP1 通信重叠
 
- 本 Group 关闭FSDP all_gather 限流（`limit_all_gathers=False`），并开启 `forward_prefetch` 与 `backward_prefetch: pre`，使 all_gather 跑在计算前面，提高通信、计算重叠度。
+ 本 Group 关闭FSDP all_gather 限流（`limit_all_gathers=False`），并开启 `forward_prefetch` 与 `backward_prefetch: pre`，使 all_gather 跑在计算前面，提高通信、计算重叠度。三个取值固定写在 `fsdp_prefetch.py` 里，不读 Group options。
 
 本 Group patch 的是 FSDP1 类本身，与 `openvla.compile.fsdp1` 可以叠加：compile 组在运行时动态解析 FSDP 类来构造实例，因此能看到本 Group 注入的通信默认值。
 
@@ -165,7 +167,9 @@ FA2 在 attention mask 非空时会走 `_get_unpad_data` 等 varlen 路径，其
 
 模型基线的 `pad_sequence` 只补齐到 batch 内最长，导致 padded length 及下游所有激活、LM head logits、CE workspace 的形状每步、每 rank 都不同。本栈的 HIP caching allocator 每个新 size class 都需要新 segment，于是步骤中会出现 `hipMalloc` → 设备同步，所有 rank 在下一个集合通信处等待。
 
-1. 本 Group 把 batch 长度向上取整到 `options.bucket` 的倍数，并封顶在 `model_max_length`，使形状来自一个小的、重复的 size class 集合，上一步缓存的块可以复用。向上取整的粒度（`bucket`） 可调，默认取值为 `8`。
+1. 本 Group 把 batch 长度向上取整到 `BUCKET = 8` 的倍数，并封顶在 `model_max_length`，使形状来自一个小的、重复的 size class 集合，上一步缓存的块可以复用。粒度固定写在 `text_len_bucket.py` 里，不读 Group options。
+
+   本 Group 在 `DataLoader.__iter__` 上补齐：collate 无论跑在主进程还是 spawn worker 里，batch 都先由原 collation 产出，迭代时统一把长度向上取整到 `BUCKET`。类对象不动，因此不存在 pickle 类引用问题，也不依赖 `openvla.dataloader.spawn` 的开关。`IGNORE_INDEX` 无法解析、补齐失败均直接抛错，不静默退回基线 collation。
 
 2. 在runtime config中添加环境变量PYTORCH_HIP_ALLOC_CONF=roundup_power2_divisions:16，使申请的缓存shape更规整，提高缓存命中率。
 
@@ -193,16 +197,16 @@ gen-2 全量回收需要遍历进程内所有被跟踪容器，而训练循环�
 
 ## 3. 数值一致性复现项
 
-| Group | 优化内容 | 关键选项（随包取值） |
+| Group | 优化内容 | 固定行为（无 options） |
 | --- | --- | --- |
-| `openvla.reproducibility.data_order` | TF/RLDS 数据流显式播种 | `explicit_seeds: true`、`hold_shuffle_permutation: true` |
-| `openvla.reproducibility.determinism` | 固定 kernel 选择与 TF32、启用确定性算子 | `cudnn_deterministic: true`、`benchmark: false`、`allow_tf32: false`、`deterministic_algorithms: true`、`strict: false` |
+| `openvla.reproducibility.data_order` | TF/RLDS 数据流显式播种 | 缺失 seed 回落 run seed；frame shuffle 固定置换 |
+| `openvla.reproducibility.determinism` | 固定 kernel 选择与 TF32、启用确定性算子 | `cudnn_deterministic=True`、`benchmark=False`、`allow_tf32=False`、`deterministic_algorithms=True`、`strict=False` |
 
 ### 3.1 数据流（data_order）
 
 上游只播种 `random` / `numpy` / `torch`。RLDS/dlimp 管线的随机点——TFDS 文件级 shuffle、mixture 的 `sample_from_datasets`、frame shuffle、增强里的 `tf.random.uniform`——都以 `seed=None` 构造，TF 在图构建时从全局 RNG 取值，不播种则每次启动看到的样本顺序都不同。
 
-本 Group 把 run seed 打进 TF 全局 RNG，并显式传给 mixture 采样与 frame shuffle，回答“第 k 步看到哪些样本”。`explicit_seeds` 控制缺失的 seed 是否回落到 run seed，`hold_shuffle_permutation` 控制 frame shuffle 是否保持置换。上游不固定这些随机点，因此跨配置比对 loss 曲线时需固定 run seed 并保持数据相关配置一致。
+本 Group 把 run seed 打进 TF 全局 RNG，并显式传给 mixture 采样与 frame shuffle，回答“第 k 步看到哪些样本”。两项行为固定开启：缺失的 seed 回落到 run seed，frame shuffle 保持置换（不读 options）。上游不固定这些随机点，因此跨配置比对 loss 曲线时需固定 run seed 并保持数据相关配置一致。
 
 TFDS 文件级 shuffle 仍走 `tf.data.Dataset.shuffle`（eager 下 `seed=None` 派生自全局种子，同种子即同顺序），本 Group 只锚定 `dlimp.DLataset.shuffle`，避免改变 shard 读取顺序。
 

@@ -37,12 +37,6 @@ optimization_groups:
   # flex attn编译选项设置，防止编译报错
   - id: lingbot-vla-v2.flex-kernel-options
     enabled: true
-    options:
-      kernel_options:
-        BLOCK_M: 32
-        BLOCK_N: 32
-        num_warps: 4
-        num_stages: 1
 
   # conv3d->linear
   - id: lingbot-vla-v2.conv3d-to-linear
@@ -52,16 +46,20 @@ optimization_groups:
   - id: lingbot-vla-v2.qwen3vl-cache-grid-thw
     enabled: true
 
-  # 逐层 compile vision block
-  - id: lingbot-vla-v2.qwen3vl-compile
-    enabled: true
-    options:
-      compile_blocks: true
-      compile:
-        dynamic: true
-
   # 编译 深度预测和未来帧预测 代理任务的两个teacher网络
   - id: lingbot-vla-v2.compile-teacher
+    enabled: true
+
+  # 逐层 compile qwen3vl 的 vision block
+  - id: lingbot-vla-v2.qwen3vl-compile
+    enabled: true
+
+  # 逐层 compile qwen3-vl text decoder layer
+  - id: lingbot-vla-v2.qwen3vl-compile-text
+    enabled: true
+
+  # 逐层 compile qwen2 action expert 的 MoE decoder layer
+  - id: lingbot-vla-v2.qwen2-compile-expert
     enabled: true
 
 
