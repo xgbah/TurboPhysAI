@@ -123,7 +123,8 @@ turbo-physai run \
     --trackers '[jsonl]'
 ```
 
-### 7.2 单机八卡训练
+### 7.2 单机8卡训练
+#### 7.2.1 加载基座VLM权重进行预训练
 
 ```bash
 # 这里把官方启动命令`--vla.train_strategy fsdp-full-shard`改为fsdp-shard-grad-op策略，减少通信开销
@@ -131,6 +132,25 @@ turbo-physai run \
   --model openvla \
   --log-report \
   torchrun --standalone --nnodes 1 --nproc-per-node 8 vla-scripts/train.py \
+    --vla.type prism-dinosiglip-224px+mx-bridge \
+    --vla.train_strategy fsdp-shard-grad-op \
+    --data_root_dir /workspace/dataset/BridgeDataV2 \
+    --run_root_dir <训练输出目录> \
+    --run_id_note openvla_8card \
+    --trackers '[jsonl]'
+```
+
+#### 7.2.2 加载官方OpenVLA权重进行全量微调
+
+```bash
+# 这里把官方启动命令`--vla.train_strategy fsdp-full-shard`改为fsdp-shard-grad-op策略，减少通信开销
+# 预训练权重可在官方huggingface仓库获取：https://huggingface.co/openvla/openvla-7b-prismatic/tree/main/checkpoints
+turbo-physai run \
+  --model openvla \
+  --log-report \
+  torchrun --standalone --nnodes 1 --nproc-per-node 8 vla-scripts/train.py \
+    --pretrained_checkpoint /path/to/openvla-7b-native/checkpoints/step-295000-epoch-40-loss=0.2200.pt \
+    --is_resume=False \
     --vla.type prism-dinosiglip-224px+mx-bridge \
     --vla.train_strategy fsdp-shard-grad-op \
     --data_root_dir /workspace/dataset/BridgeDataV2 \
