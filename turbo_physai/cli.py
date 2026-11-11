@@ -313,6 +313,7 @@ def main(argv=None) -> int:
                 runtime,
                 overrides=_assignments(args.set, "--set"),
                 numa_auto_override=False if args.disable_numa else None,
+                accuracy_mode=args.accuracy,
             )
             if runtime_path is None:
                 environment.pop("TURBO_PHYSAI_RUNTIME_CONFIG_PATH", None)
