@@ -13,7 +13,6 @@ environment:
     DISABLE_ADDMM_CUDA_LT: "1"
     MIOPEN_PRECISION_FP32_FP32_FP32_TF32_FP32: "1"
   unset: []
-  # 精度对齐时收回允许 TF32 的开关，保持容器级确定性与 Group 开关一致。
   accuracy:
     set:
       DISABLE_ADDMM_CUDA_LT: "1"
