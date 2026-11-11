@@ -70,6 +70,13 @@ class AccuracyOnlyGroupTest(unittest.TestCase):
     def test_accuracy_only_defaults_to_false(self):
         self.assertFalse(OptimizationGroupConfig("demo.speed").accuracy_only)
 
+    def test_default_mode_skips_accuracy_only_group(self):
+        effective, _, reasons = _apply_group_overrides(
+            self.config, self.registry, (), ()
+        )
+        self.assertEqual(_enabled(effective), {"demo.speed"})
+        self.assertEqual(reasons["demo.order"], "accuracy_only_group")
+
 
 class AccuracyOnlySchemaTest(unittest.TestCase):
     def test_schema_accepts_accuracy_only(self):
@@ -135,6 +142,7 @@ class AccuracyModeEnvironmentTest(unittest.TestCase):
             ACCURACY_MODE,
             bootstrap_environment({}, optimization_config="c", accuracy_mode=False),
         )
+        self.assertNotIn(ACCURACY_MODE, bootstrap_environment({}, optimization_config="c"))
 
 
 if __name__ == "__main__":
