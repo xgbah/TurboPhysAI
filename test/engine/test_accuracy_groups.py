@@ -15,7 +15,7 @@ from turbo_physai.engine.contracts import (
     OptimizationConfigMetadata,
     OptimizationGroupConfig,
 )
-from turbo_physai.engine.errors import OptimizationConfigError
+from turbo_physai.engine.errors import OptimizationConfigError, TurboPhysAIError
 from turbo_physai.runtime import RuntimeConfig, load_runtime_config, prepare_environment
 
 
@@ -202,6 +202,36 @@ class AccuracyRuntimeEnvironmentTest(unittest.TestCase):
                 overrides={"ACCURACY_ONLY": "cli"},
             )
         self.assertEqual(env["ACCURACY_ONLY"], "cli")
+
+
+class AccuracyOnlyCliValidationTest(unittest.TestCase):
+    def _write_config(self, folder):
+        path = Path(folder) / "optimization.yaml"
+        path.write_text(
+            "schema_version: turbophysai/optimization-config/v1\n"
+            "kind: OptimizationConfig\n"
+            "metadata:\n"
+            "  id: demo\n"
+            "  version: '1'\n"
+            "optimization_groups:\n"
+            "  - id: demo.order\n"
+            "    accuracy_only: true\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_cli_rejects_forcing_accuracy_only_group_without_accuracy(self):
+        from turbo_physai.cli import _validate_run_groups
+
+        with tempfile.TemporaryDirectory() as folder:
+            config = self._write_config(folder)
+            with self.assertRaisesRegex(TurboPhysAIError, "--accuracy"):
+                _validate_run_groups(
+                    config, ["demo.order"], [], ["python", "train.py"], False
+                )
+            _validate_run_groups(
+                config, ["demo.order"], [], ["python", "train.py"], True
+            )
 
 
 if __name__ == "__main__":
